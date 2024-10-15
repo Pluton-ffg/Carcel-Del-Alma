@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leer Berserk - Carcel Del Alma</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background-color: #333;
+        }
+        #pdf-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        #pdf-viewer {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        #pdf-controls {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            align-items: center;
+            background-color: rgba(34, 34, 34, 0.7);
+            padding: 5px;
+            border-radius: 5px;
+        }
+        button {
+            margin: 0 5px;
+            padding: 5px 10px;
+            background-color: rgba(242, 97, 63, 0.8);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: rgba(209, 78, 47, 0.9);
+        }
+        #page-num {
+            color: white;
+            margin: 0 10px;
+            font-size: 14px;
+        }
+        #volver-btn {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1000;
+            background-color: rgba(242, 97, 63, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div id="pdf-container">
+        <div id="pdf-viewer"></div>
+        <div id="pdf-controls">
+            <button id="prev-page">&#9664;</button>
+            <span id="page-num"></span>
+            <button id="next-page">&#9654;</button>
+        </div>
+        <button id="volver-btn" onclick="window.location.href='../../etiquetas.html'">Volver</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const volumen = urlParams.get('volumen');
+            if (volumen) {
+                const pdfUrl = `../Volumenes/esp/Berserk-Vol-${volumen}.pdf`;
+                
+                pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
+                    const viewer = document.getElementById('pdf-viewer');
+                    const prevButton = document.getElementById('prev-page');
+                    const nextButton = document.getElementById('next-page');
+                    const pageNumSpan = document.getElementById('page-num');
+                    let currentPage = 1;
+                    let pdfInstance = null;
+
+                    function renderPage(num) {
+                        pdf.getPage(num).then(function(page) {
+                            const viewport = page.getViewport({ scale: 1 });
+                            const canvas = document.createElement('canvas');
+                            const context = canvas.getContext('2d');
+                            
+                            const containerHeight = viewer.clientHeight;
+                            const scale = containerHeight / viewport.height;
+                            
+                            const scaledViewport = page.getViewport({ scale: scale });
+
+                            canvas.height = scaledViewport.height;
+                            canvas.width = scaledViewport.width;
+
+                            const renderContext = {
+                                canvasContext: context,
+                                viewport: scaledViewport
+                            };
+
+                            pdfInstance = page.render(renderContext);
+                            
+                            while (viewer.firstChild) {
+                                viewer.removeChild(viewer.firstChild);
+                            }
+                            viewer.appendChild(canvas);
+
+                            pageNumSpan.textContent = `${num} / ${pdf.numPages}`;
+                        });
+                    }
+
+                    function showPrevPage() {
+                        if (currentPage <= 1) return;
+                        currentPage--;
+                        renderPage(currentPage);
+                    }
+
+                    function showNextPage() {
+                        if (currentPage >= pdf.numPages) return;
+                        currentPage++;
+                        renderPage(currentPage);
+                    }
+
+                    prevButton.addEventListener('click', showPrevPage);
+                    nextButton.addEventListener('click', showNextPage);
+
+                    document.addEventListener('keydown', function(e) {
+                        if (e.key === 'ArrowLeft') showPrevPage();
+                        else if (e.key === 'ArrowRight') showNextPage();
+                    });
+
+                    renderPage(currentPage);
+
+                    window.addEventListener('resize', function() {
+                        renderPage(currentPage);
+                    });
+                }).catch(function(error) {
+                    console.error('Error al cargar el PDF:', error);
+                    document.getElementById('pdf-viewer').textContent = 'Error al cargar el PDF. Por favor, inténtalo de nuevo más tarde.';
+                });
+            }
+        });
+    </script>
+</body>
+</html>
